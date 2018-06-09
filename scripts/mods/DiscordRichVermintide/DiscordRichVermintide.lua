@@ -86,7 +86,7 @@ end
 mod:hook("StateSplashScreen.on_enter", function (func, ...)
 	discordRPC.initialize(appId, true)
 	update_rich()
-	mod:echo("DiscordRichVermintide loaded - ver 0.1")
+	print("DiscordRichVermintide loaded - ver 0.1")
 	-- Original function
 	local result = func(...)
 	return result
@@ -100,24 +100,26 @@ mod:hook("CharacterSelectionStateCharacter._respawn_player", function (func, ...
 	update_rich()
 end)
 
+--Called when being the Server
 mod:hook("NetworkServer.update", function (func, ...)
 	-- Original function
 	func(...)
 	
 	if last_number_of_players ~= get_current_number_of_players() then
 		last_number_of_players = get_current_number_of_players()
-		--mod:echo("NetworkServer.update - Result " .. last_number_of_players)
+		print("NetworkServer.update - Result " .. last_number_of_players)
 		update_rich_player_count()
 	end
 end)
 
+--Called when being the Client
 mod:hook("NetworkClient.update", function (func, ...)
 	-- Original function
 	func(...)
 	
 	if last_number_of_players ~= get_current_number_of_players() then
 		last_number_of_players = get_current_number_of_players()
-		--mod:echo("NetworkClient.update - Result " .. last_number_of_players)
+		print("NetworkClient.update - Result " .. last_number_of_players)
 		update_rich_player_count()
 	end
 end)
@@ -142,9 +144,6 @@ mod.on_game_state_changed = function(status, state)
 			update_rich()
 		end
 		if state == "StateIngame" then
-			mod.discord_presence = {
-				details = "In Game"
-			}
 			update_rich_list()
 			update_rich()
 		end
