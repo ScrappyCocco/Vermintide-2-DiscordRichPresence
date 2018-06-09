@@ -3,11 +3,11 @@
 # Vermintide 2 - Discord Rich Presence
 Discord Rich Vermintide is a Vermintide 2 mod that show on Discord the character you are playing, the map and the current party size.
 
-It use the Discord Rich library, thanks to Lua DiscordRPC.
+It works using [Discord Rich](https://discordapp.com/rich-presence) library, thanks to Lua DiscordRPC.
 
 ### How to install the mod
 
-Subscribe the mod on Steam, [it's on Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=1406004015).
+Subscribe the mod on Steam, [it's in the Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=1406004015).
 
 Make sure you have already installed the Vermintide mod framework, you can download it [here](https://steamcommunity.com/sharedfiles/filedetails/?id=1369573612) and check that it's the first mod loaded in the launcher.
 
@@ -20,7 +20,7 @@ Finally, install the [Discord Rich Library](https://github.com/ScrappyCocco/Verm
 
 ## Authors
 
-* **ScrappyCocco** - *The rest of the work (GUI and code optimizations)*
+* **ScrappyCocco** - *Mod creator*
 * _Thanks to all the people of Vermintide Modders Discord server, you helped me a lot_
 
 ## License
