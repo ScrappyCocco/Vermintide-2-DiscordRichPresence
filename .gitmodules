@@ -1,0 +1,3 @@
+[submodule "scripts/mods/DiscordRichVermintide/lua-discordRPC"]
+	path = scripts/mods/DiscordRichVermintide/lua-discordRPC
+	url = https://github.com/pfirsich/lua-discordRPC

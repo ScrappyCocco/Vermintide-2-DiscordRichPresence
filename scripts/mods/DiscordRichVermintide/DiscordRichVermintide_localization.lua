@@ -2,12 +2,6 @@ return {
 	mod_description = {
 		en = "DiscordRichVermintide description"
 	},
-	checkbox_option_name = {
-		en = "Checkbox Option"
-	},
-	checkbox_option_tooltip = {
-		en = "Checkbox Option description."
-	},
 --[[
 	some_other_text_id = {
 		en = "Translation",        -- English

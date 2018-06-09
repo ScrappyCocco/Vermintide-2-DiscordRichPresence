@@ -7,5 +7,6 @@ package = [
 ]
 
 lua = [
-	"scripts/mods/DiscordRichVermintide/*"
+	"scripts/mods/DiscordRichVermintide/*",
+	"scripts/mods/DiscordRichVermintide/lua-discordRPC/*"
 ]
