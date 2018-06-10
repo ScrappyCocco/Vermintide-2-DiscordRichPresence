@@ -10,6 +10,7 @@ local appId = require("scripts/mods/DiscordRichVermintide/applicationId")
 local current_version = "0.25" -- Used only to print the version of the mod loaded
 local last_number_of_players = 0 -- Used to store the number of current human players (0 if currently loading)
 local last_timestamp_saved = 0 -- Used to store the time of begin of the timer
+local last_loading_level_key = "" -- Used to check which level is currently being loaded
 
 local discord_presence = {
 	details = "Starting the game..."
@@ -97,12 +98,25 @@ local function update_rich_list()
 	}
 end
 
+--[[
+	Discord Rich Status Update Functions
+--]]
+
 -- Update the player count
 local function update_rich_player_count()
 	if last_number_of_players ~= 0 then
 		update_rich_list()
 		update_rich()
 	end
+end
+
+-- Update discord rich level loading status
+local function update_rich_with_loading_level()
+	discord_presence = {
+		details = "Loading a map...",
+		state = "(" .. get_level_name(last_loading_level_key) .. ")"
+	}
+	update_rich()
 end
 
 --[[
@@ -124,14 +138,22 @@ end)
 
 -- Called when loading a map, show on discord the map you are loading
 mod:hook(StateLoadingRunning, "on_enter", function (func, self, params)
-	discord_presence = {
-		details = "Loading a map...",
-		state = "(" .. get_level_name(params.level_transition_handler:get_next_level_key()) .. ")"
-	}
-	update_rich()
+	last_loading_level_key = params.level_transition_handler:get_next_level_key()
+	update_rich_with_loading_level()
 	
-	-- Call the riginal function
+	-- Call the original function
 	func(self, params)
+end)
+
+-- Called when the state loading get updated, check if the get_next_level_key() changed
+mod:hook(StateLoadingRunning, "update", function (func, self, ...)
+	if last_loading_level_key ~= self.parent:get_next_level_key() then
+		last_loading_level_key = self.parent:get_next_level_key()
+		update_rich_with_loading_level()
+	end
+	
+	-- Call the original function
+	func(self, ...)
 end)
 
 -- Called when being the Server
