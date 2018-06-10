@@ -26,4 +26,4 @@ Finally, install the [Discord Rich Library](https://github.com/ScrappyCocco/Verm
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
