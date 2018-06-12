@@ -7,7 +7,7 @@ local appId = require("scripts/mods/DiscordRichVermintide/applicationId")
 	Variables
 --]]
 
-local current_version = "0.25" -- Used only to print the version of the mod loaded
+local current_version = "0.30" -- Used only to print the version of the mod loaded
 local last_number_of_players = 0 -- Used to store the number of current human players (0 if currently loading)
 local last_timestamp_saved = 0 -- Used to store the time of begin of the timer
 local last_loading_level_key = "" -- Used to check which level is currently being loaded
@@ -66,6 +66,11 @@ local function is_in_lobby()
 	return get_current_level_key() == "inn_level"
 end
 
+-- Function that return the difficulty localized string
+local function get_difficulty_name()
+	return Localize(DifficultySettings[Managers.state.difficulty.difficulty].display_name)
+end
+
 --[[
 	Discord Rich Functions
 --]]
@@ -83,7 +88,7 @@ local function update_rich_list()
 	if is_in_lobby() then
 		currently = "In the lobby"
 	else
-		currently = "Playing " .. get_level_name(current_lv_key)
+		currently = "[" .. get_difficulty_name() .. "] " .. get_level_name(current_lv_key)
 	end
 	discord_presence = {
 		details = currently,
@@ -94,7 +99,8 @@ local function update_rich_list()
 		smallImageText = get_player_character_name_translated() .. " - " .. career_name_translated,
 		partySize = last_number_of_players,
 		partyMax = 4,
-		startTimestamp = last_timestamp_saved
+		startTimestamp = last_timestamp_saved,
+		joinSecret = "test_Secret"
 	}
 end
 
@@ -177,6 +183,19 @@ mod:hook_safe(NetworkClient, "update", function (...)
 end)
 
 --[[
+	Discord Rich Join Functions
+--]]
+
+function discordRPC.joinRequest(userId, username, discriminator, avatar)
+    print(string.format("Discord: join request (%s, %s, %s, %s)", userId, username, discriminator, avatar))
+	discordRPC.respond(userId, "yes")
+end
+
+function discordRPC.joinGame(joinSecret)
+	print(string.format("Discord: join (%s)", joinSecret))
+end
+
+--[[
 	Callback
 --]]
 
@@ -194,4 +213,10 @@ mod.on_game_state_changed = function(status, state)
 			update_rich()
 		end
 	end
+end
+
+-- Called on every update to mods
+-- dt - time in milliseconds since last update
+mod.update = function(dt)
+	discordRPC.runCallbacks()
 end
