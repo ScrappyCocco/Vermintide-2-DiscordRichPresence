@@ -17,6 +17,23 @@ local discord_presence = {
 }
 
 --[[
+	Discord Rich Join Functions
+--]]
+
+function discordRPC.joinRequest(userId, username, discriminator, avatar)
+	print("discordRPC.joinRequest")
+	mod:echo("discordRPC.joinRequest")
+    print(string.format("Discord: join request (%s, %s, %s, %s)", userId, username, discriminator, avatar))
+	discordRPC.respond(userId, "yes")
+end
+
+function discordRPC.joinGame(joinSecret)
+	print("discordRPC.joinGame")
+	mod:echo("discordRPC.joinGame")
+	print(string.format("Discord: join (%s)", joinSecret))
+end
+
+--[[
 	Functions
 --]]
 
@@ -61,9 +78,25 @@ local function get_current_number_of_players()
 	return Managers.player:num_human_players()
 end
 
+local function is_current_player_host()
+	return Managers.state.game_mode.is_server
+end
+
+local function get_player_unique_id()
+	return Managers.player:local_player()._unique_id
+end
+
 -- Function that return if the current level is the lobby
 local function is_in_lobby()
 	return get_current_level_key() == "inn_level"
+end
+
+local function get_network_hash()
+	if is_current_player_host() then
+		return Managers.state.game_mode._lobby_host.network_hash
+	else
+		return Managers.state.game_mode._lobby_client.network_hash
+	end
 end
 
 -- Function that return the difficulty localized string
@@ -97,10 +130,11 @@ local function update_rich_list()
 		largeImageText = get_level_name(current_lv_key),
 		smallImageKey = get_player_career_name().display_name,
 		smallImageText = get_player_character_name_translated() .. " - " .. career_name_translated,
+		partyId = get_player_unique_id(),
 		partySize = last_number_of_players,
 		partyMax = 4,
 		startTimestamp = last_timestamp_saved,
-		joinSecret = "test_Secret"
+		joinSecret = get_network_hash()
 	}
 end
 
@@ -183,25 +217,13 @@ mod:hook_safe(NetworkClient, "update", function (...)
 end)
 
 --[[
-	Discord Rich Join Functions
---]]
-
-function discordRPC.joinRequest(userId, username, discriminator, avatar)
-    print(string.format("Discord: join request (%s, %s, %s, %s)", userId, username, discriminator, avatar))
-	discordRPC.respond(userId, "yes")
-end
-
-function discordRPC.joinGame(joinSecret)
-	print(string.format("Discord: join (%s)", joinSecret))
-end
-
---[[
 	Callback
 --]]
 
--- Call when all mods are being unloaded, shutdown discord rich
-mod.on_unload = function(exit_game)
-	discordRPC.shutdown()
+-- Called on every update to mods
+-- dt - time in milliseconds since last update
+mod.update = function(dt)
+	discordRPC.runCallbacks()
 end
 
 -- Call when game state changes (e.g. StateLoading -> StateIngame)
@@ -215,8 +237,7 @@ mod.on_game_state_changed = function(status, state)
 	end
 end
 
--- Called on every update to mods
--- dt - time in milliseconds since last update
-mod.update = function(dt)
-	discordRPC.runCallbacks()
+-- Call when all mods are being unloaded, shutdown discord rich
+mod.on_unload = function(exit_game)
+	discordRPC.shutdown()
 end
