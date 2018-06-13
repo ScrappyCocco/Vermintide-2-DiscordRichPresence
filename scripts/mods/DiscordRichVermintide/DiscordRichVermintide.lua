@@ -17,23 +17,6 @@ local discord_presence = {
 }
 
 --[[
-	Discord Rich Join Functions
---]]
-
-function discordRPC.joinRequest(userId, username, discriminator, avatar)
-	print("discordRPC.joinRequest")
-	mod:echo("discordRPC.joinRequest")
-    print(string.format("Discord: join request (%s, %s, %s, %s)", userId, username, discriminator, avatar))
-	discordRPC.respond(userId, "yes")
-end
-
-function discordRPC.joinGame(joinSecret)
-	print("discordRPC.joinGame")
-	mod:echo("discordRPC.joinGame")
-	print(string.format("Discord: join (%s)", joinSecret))
-end
-
---[[
 	Functions
 --]]
 
@@ -91,17 +74,25 @@ local function is_in_lobby()
 	return get_current_level_key() == "inn_level"
 end
 
-local function get_network_hash()
+local function get_current_lobby_manager()
 	if is_current_player_host() then
-		return Managers.state.game_mode._lobby_host.network_hash
+		return Managers.state.game_mode._lobby_host
 	else
-		return Managers.state.game_mode._lobby_client.network_hash
+		return Managers.state.game_mode._lobby_client
 	end
+end
+
+local function get_network_hash()
+	return get_current_lobby_manager().network_hash
 end
 
 -- Function that return the difficulty localized string
 local function get_difficulty_name()
 	return Localize(DifficultySettings[Managers.state.difficulty.difficulty].display_name)
+end
+
+local function get_lobby_steam_id()
+	return Steam.id_hex_to_dec(LobbyInternal.lobby_id(get_current_lobby_manager().lobby))
 end
 
 --[[
@@ -130,12 +121,34 @@ local function update_rich_list()
 		largeImageText = get_level_name(current_lv_key),
 		smallImageKey = get_player_career_name().display_name,
 		smallImageText = get_player_character_name_translated() .. " - " .. career_name_translated,
-		partyId = get_player_unique_id(),
+		partyId = get_network_hash(), --TODO, NEED TO BE CHANGED
 		partySize = last_number_of_players,
 		partyMax = 4,
 		startTimestamp = last_timestamp_saved,
-		joinSecret = get_network_hash()
+		joinSecret = get_lobby_steam_id() --DISCUSS ABOUT THIS
 	}
+end
+
+--[[
+	Discord Rich Join Functions
+--]]
+
+function discordRPC.joinRequest(userId, username, discriminator, avatar)
+	print("discordRPC.joinRequest")
+	mod:echo("discordRPC.joinRequest")
+	print(string.format("Discord: join request (%s, %s, %s, %s)", userId, username, discriminator, avatar))
+	if get_current_number_of_players() == 4 then
+		discordRPC.respond(userId, "no")
+	else
+		discordRPC.respond(userId, "yes")
+	end
+end
+
+function discordRPC.joinGame(joinSecret)
+	print("discordRPC.joinGame")
+	mod:echo("discordRPC.joinGame")
+	print(string.format("Discord: join (%s)", joinSecret))
+	-- mod:echo("steam://run/552500// +connect_lobby " .. joinSecret) NOT WORKING
 end
 
 --[[
