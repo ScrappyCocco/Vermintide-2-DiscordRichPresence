@@ -74,6 +74,10 @@ local function is_in_lobby()
 	return get_current_level_key() == "inn_level"
 end
 
+local function is_match_private()
+	return Managers.matchmaking:is_game_private()
+end
+
 local function get_current_lobby_manager()
 	if is_current_player_host() then
 		return Managers.state.game_mode._lobby_host
@@ -133,13 +137,20 @@ end
 	Discord Rich Join Functions
 --]]
 
+function discordRPC.errored(errorCode, message)
+	mod:echo("Error:" .. message)
+    print(string.format("Discord: error (%d: %s)", errorCode, message))
+end
+
 function discordRPC.joinRequest(userId, username, discriminator, avatar)
 	print("discordRPC.joinRequest")
 	mod:echo("discordRPC.joinRequest")
 	print(string.format("Discord: join request (%s, %s, %s, %s)", userId, username, discriminator, avatar))
-	if get_current_number_of_players() == 4 then
+	if get_current_number_of_players() == 4 or is_match_private() then
+		mod:echo("You automatically refused " .. username .. " join request")
 		discordRPC.respond(userId, "no")
 	else
+		mod:echo(username .. " is joining you from Discord")
 		discordRPC.respond(userId, "yes")
 	end
 end
@@ -148,6 +159,7 @@ function discordRPC.joinGame(joinSecret)
 	print("discordRPC.joinGame")
 	mod:echo("discordRPC.joinGame")
 	print(string.format("Discord: join (%s)", joinSecret))
+	LobbyInternal.join_lobby(LobbyInternal.get_lobby_data_from_id(joinSecret))
 	-- mod:echo("steam://run/552500// +connect_lobby " .. joinSecret) NOT WORKING
 end
 
