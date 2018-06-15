@@ -100,7 +100,7 @@ local function get_difficulty_name()
 	return Localize(DifficultySettings[Managers.state.difficulty.difficulty].display_name)
 end
 
--- Function that return the current Steam Lobby ID (used to Join)
+-- Function that return the current Steam Lobby ID (used for Discord JoinKey and then to Join)
 local function get_lobby_steam_id()
 	return LobbyInternal.lobby_id(get_current_lobby_manager().lobby)
 end
@@ -108,8 +108,8 @@ end
 -- Function that create an unique party is that is used to create single-use invitations
 local function get_unique_party_id()
 	if is_current_player_host() then
-		if get_local_player().peer_id ~= saved_host_id then
-			print("An error occurred with the peer_id")
+		if get_local_player().peer_id ~= saved_host_id then -- If i'm the host, they should be equal
+			print("ERROR: An error occurred with the peer_id")
 		end
 		return (get_local_player().peer_id .. get_lobby_steam_id() .. get_current_level_key())
 	else
