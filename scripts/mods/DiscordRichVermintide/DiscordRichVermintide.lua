@@ -13,10 +13,9 @@ local last_timestamp_saved = 0 -- Used to store the time of begin of the timer
 local last_loading_level_key = "" -- Used to check which level is currently being loaded
 
 local game_started = false -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
-local need_join_on_start = false -- Used to save if the player want to join on launch
-local saved_lobby_id = "" -- The lobby ID to join once the game is started
+local saved_lobby_id = nil -- The lobby ID to join once the game is started, nil if not used
 
-local current_party_key = "" -- Used to store che current party key, it change everytime the player enter StateIngame, used to have single-use Discord invites
+local saved_host_id = "" -- Used to save who is the current host i joined, used for creating the PartyID
 
 local discord_presence = {
 	details = "Starting the game..."
@@ -77,11 +76,6 @@ local function is_current_player_host()
 	return Managers.state.game_mode.is_server
 end
 
--- Function that return the player ID
-local function get_player_unique_id()
-	return get_local_player()._unique_id
-end
-
 -- Function that return if the current level is the lobby
 local function is_in_lobby()
 	return get_local_player().network_manager.matchmaking_manager._ingame_ui.is_in_inn
@@ -101,11 +95,6 @@ local function get_current_lobby_manager()
 	end
 end
 
--- Function that create an unique party is that is used to create single-use invitations
-local function update_unique_party_id()
-	current_party_key = get_player_unique_id() .. os.time()
-end
-
 -- Function that return the difficulty localized string
 local function get_difficulty_name()
 	return Localize(DifficultySettings[Managers.state.difficulty.difficulty].display_name)
@@ -114,6 +103,18 @@ end
 -- Function that return the current Steam Lobby ID (used to Join)
 local function get_lobby_steam_id()
 	return LobbyInternal.lobby_id(get_current_lobby_manager().lobby)
+end
+
+-- Function that create an unique party is that is used to create single-use invitations
+local function get_unique_party_id()
+	if is_current_player_host() then
+		if get_local_player().peer_id ~= saved_host_id then
+			print("An error occurred with the peer_id")
+		end
+		return (get_local_player().peer_id .. get_lobby_steam_id() .. get_current_level_key())
+	else
+		return (saved_host_id .. get_lobby_steam_id() .. get_current_level_key())
+	end
 end
 
 --[[
@@ -127,25 +128,28 @@ end
 
 -- Update the rich presence details
 local function update_rich_list()
-	local currently = ""
+	local current_state = ""
 	local large_image_text = ""
 	local current_lv_key = get_current_level_key()
+	local current_lv_name = get_level_name(current_lv_key)
 	local career_name_translated = get_player_career_name_translated()
+	-- Generate current_state based on current map
 	if is_in_lobby() then
-		currently = "In the lobby"
-		large_image_text = get_level_name(current_lv_key)
+		current_state = "In the lobby"
+		large_image_text = current_lv_name
 	else
-		currently = "[" .. get_difficulty_name() .. "] " .. get_level_name(current_lv_key)
-		large_image_text = get_difficulty_name() .. " - " .. get_level_name(current_lv_key)
+		current_state = "[" .. get_difficulty_name() .. "] " .. current_lv_name
+		large_image_text = get_difficulty_name() .. " - " .. current_lv_name
 	end
+	-- Update the Discord Presence Details
 	discord_presence = {
-		details = currently,
+		details = current_state,
 		state = "as " .. career_name_translated,
 		largeImageKey = current_lv_key,
 		largeImageText = large_image_text,
 		smallImageKey = get_player_career_name().display_name,
 		smallImageText = get_player_character_name_translated() .. " - " .. career_name_translated,
-		partyId = current_party_key,
+		partyId = get_unique_party_id(),
 		partySize = last_number_of_players,
 		partyMax = 4,
 		startTimestamp = last_timestamp_saved,
@@ -177,7 +181,6 @@ end
 function discordRPC.joinGame(joinSecret)
 	mod:echo("Discord RPC - Joining Game...")
 	if not game_started then -- Game not started, save the id for later
-		need_join_on_start = true
 		saved_lobby_id = joinSecret
 	else -- Join now
 		join_game_with_id(joinSecret)
@@ -220,14 +223,13 @@ end)
 mod:hook_safe(StateIngame, "on_enter", function (...)
 	if not game_started then -- First start of the game
 		game_started = true
-		if need_join_on_start then -- The player want to Join
+		if saved_lobby_id ~= nil then -- The player want to Join
 			join_game_with_id(saved_lobby_id)
-			need_join_on_start = false
+			saved_lobby_id = nil
 		end
 	end
 	--Update Discord Rich Presence
 	set_timestamp_to_now()
-	update_unique_party_id()
 	update_rich_list()
 	update_rich()
 end)
@@ -276,6 +278,18 @@ mod:hook_safe(NetworkClient, "update", function (...)
 		print("NetworkClient.update - Result " .. last_number_of_players)
 		update_rich_player_count()
 	end
+end)
+
+-- Called when Joining a Game as client, the party leader change, need to save the peer_id for the partyID
+mod:hook(PartyManager, "set_leader", function (func, self, peer_id)
+	if peer_id ~= nil then
+		if saved_host_id ~= peer_id then
+			saved_host_id = peer_id
+		end
+	end
+	
+	-- Call the original function
+	func(self, peer_id)
 end)
 
 --[[

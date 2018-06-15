@@ -22,7 +22,7 @@ Finally, install the [Discord Rich Library](https://github.com/ScrappyCocco/Verm
 ## Authors
 
 * **ScrappyCocco** - *Mod creator*
-* _Thanks to all the people of Vermintide Modders Discord server, you helped me a lot_
+* _Thanks to all the people of Vermintide Modders Discord server, you helped me a lot (Special thanks to Arkii and SkacikPL)_
 
 ## License
 
