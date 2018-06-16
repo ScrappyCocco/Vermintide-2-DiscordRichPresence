@@ -14,9 +14,15 @@ local last_loading_level_key = "" -- Used to check which level is currently bein
 
 local game_started = false -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
 local saved_lobby_id = nil -- The lobby ID to join once the game is started, nil if not used
+local is_discord_join = false -- Used to skip friends check on join, but only if is a Discord join
 
 local saved_host_id = "" -- Used to save who is the current host i joined, used for creating the PartyID
 
+-- Settings variables, being read from settings on Discord rich init during StateSplashScreen
+local can_users_join_lobby_always = true -- Used to know if random people can join your lobby (when you're alone in the keep for example)
+local is_joining_from_discord_active = true -- Used to know if the user want the button "Ask to Join" on Discord
+
+-- Discord Presence Table (Empty on start)
 local discord_presence = {
 	details = "Starting the game..."
 }
@@ -81,9 +87,9 @@ local function is_in_lobby()
 	return get_local_player().network_manager.matchmaking_manager._ingame_ui.is_in_inn
 end
 
--- Function that return if the current match is private
-local function is_match_private()
-	return Managers.matchmaking:is_game_private()
+-- Function that return if the current host is looking for players or not
+local function is_host_matchmaking()
+	return get_local_player().network_manager.matchmaking_manager:is_game_matchmaking()
 end
 
 -- Function that return the lobby manager based if the player is host or not
@@ -121,7 +127,7 @@ end
 	Discord Rich Functions
 --]]
 
--- Tell discord to update the rich presence
+-- Tell Discord to update the rich presence
 local function update_rich()
 	discordRPC.updatePresence(discord_presence)
 end
@@ -155,6 +161,9 @@ local function update_rich_list()
 		startTimestamp = last_timestamp_saved,
 		joinSecret = get_lobby_steam_id()
 	}
+	if not is_joining_from_discord_active then
+		discord_presence.joinSecret = nil
+	end
 end
 
 --[[
@@ -168,18 +177,19 @@ end
 
 -- Discord Callback of joinRequest - Executed when an user press "Ask to Join" on Discord
 function discordRPC.joinRequest(userId, username, discriminator, avatar)
-	if get_current_number_of_players() == 4 or is_match_private() then
-		mod:echo("You automatically refused " .. username .. " join request")
-		discordRPC.respond(userId, "no")
-	else
+	if is_host_matchmaking() or can_users_join_lobby_always then -- Auto-accept request
 		mod:echo(username .. " is joining you from Discord")
 		discordRPC.respond(userId, "yes")
+	else -- Otherwise Auto-refuse
+		mod:echo("You automatically refused " .. username .. " join request")
+		discordRPC.respond(userId, "no")
 	end
 end
 
 -- Discord Callback of joinGame - Executed when the user Join
 function discordRPC.joinGame(joinSecret)
 	mod:echo("Discord RPC - Joining Game...")
+	is_discord_join = true
 	if not game_started then -- Game not started, save the id for later
 		saved_lobby_id = joinSecret
 	else -- Join now
@@ -199,7 +209,7 @@ local function update_rich_player_count()
 	end
 end
 
--- Update discord rich level loading status
+-- Update Discord rich level loading status
 local function update_rich_with_loading_level()
 	discord_presence = {
 		details = "Loading a map...",
@@ -214,7 +224,12 @@ end
 
 -- Init Discord RPC on StateSplashScreen.on_enter
 mod:hook_safe(StateSplashScreen, "on_enter", function (...)
+	-- Init Discord class
 	discordRPC.initialize(appId, true, "552500")
+	-- Reading settings
+	can_users_join_lobby_always = mod:get("can_other_people_always_join_you")
+	is_joining_from_discord_active = mod:get("is_discord_ask_to_join_enabled")
+	-- Discord Rich status init
 	update_rich()
 	print("DiscordRichVermintide loaded - ver " .. current_version)
 end)
@@ -234,13 +249,13 @@ mod:hook_safe(StateIngame, "on_enter", function (...)
 	update_rich()
 end)
 
--- Character changed, need to update the discord rich
+-- Character changed, need to update the Discord rich
 mod:hook_safe(CharacterSelectionStateCharacter, "_respawn_player", function (...)
 	update_rich_list()
 	update_rich()
 end)
 
--- Called when loading a map, show on discord the map you are loading
+-- Called when loading a map, show on Discord the map you are loading
 mod:hook(StateLoadingRunning, "on_enter", function (func, self, params)
 	last_loading_level_key = params.level_transition_handler:get_next_level_key()
 	update_rich_with_loading_level()
@@ -262,7 +277,7 @@ end)
 
 -- Called when being the Server
 mod:hook_safe(NetworkServer, "update", function (...)
-	-- Check if the last_number_of_players has changed, if yes update discord rich
+	-- Check if the last_number_of_players has changed, if yes update Discord rich
 	if last_number_of_players ~= get_current_number_of_players() then
 		last_number_of_players = get_current_number_of_players()
 		print("NetworkServer.update - Result " .. last_number_of_players)
@@ -272,7 +287,7 @@ end)
 
 -- Called when being the Client
 mod:hook_safe(NetworkClient, "update", function (...)
-	-- Check if the last_number_of_players has changed, if yes update discord rich
+	-- Check if the last_number_of_players has changed, if yes update Discord rich
 	if last_number_of_players ~= get_current_number_of_players() then
 		last_number_of_players = get_current_number_of_players()
 		print("NetworkClient.update - Result " .. last_number_of_players)
@@ -292,6 +307,18 @@ mod:hook(PartyManager, "set_leader", function (func, self, peer_id)
 	func(self, peer_id)
 end)
 
+-- Called when joining a game from Discord, if the host is not searching and we're not host friends, we want to join anyway
+mod:hook(MatchmakingStateRequestJoinGame, "rpc_matchmaking_request_join_lobby_reply", function(func, self, sender, client_cookie, host_cookie, reply_id)
+	if reply_id == 4 and is_discord_join then
+		is_discord_join = false
+		reply_id = 1
+		print("Reply " .. NetworkLookup.game_ping_reply[reply_id] .. " changed with " .. NetworkLookup.game_ping_reply[reply_id])
+	end
+
+	-- Call the original function
+	func(self, sender, client_cookie, host_cookie, reply_id)
+end)
+
 --[[
 	Callback
 --]]
@@ -302,7 +329,19 @@ mod.update = function(dt)
 	discordRPC.runCallbacks()
 end
 
--- Call when all mods are being unloaded, shutdown discord rich
+-- Called when the mod settings changes
+mod.on_setting_changed = function(setting_name)
+	if setting_name == "can_other_people_always_join_you" then
+		can_users_join_lobby_always = mod:get("can_other_people_always_join_you")
+	end
+	if setting_name == "is_discord_ask_to_join_enabled" then
+		is_joining_from_discord_active = mod:get("is_discord_ask_to_join_enabled")
+		update_rich_list()
+		update_rich()
+	end
+end
+
+-- Call when all mods are being unloaded, shutdown Discord rich
 mod.on_unload = function(exit_game)
 	discordRPC.shutdown()
 end
