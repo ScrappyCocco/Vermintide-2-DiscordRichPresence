@@ -194,6 +194,7 @@ end
 -- Discord Callback of joinGame - Executed when the user Join
 function discordRPC.joinGame(joinSecret)
 	mod:echo(mod:localize("discord_joining_name"))
+	mod:info("discordRPC.joinGame, enabling Discord Forced Join")
 	is_discord_join = true
 	if not game_started then -- Game not started, save the id for later
 		saved_lobby_id = joinSecret
@@ -301,7 +302,7 @@ mod:hook_safe(PartyManager, "set_leader", function (self_, peer_id)
 	end
 end)
 
--- Called when joining a game from Discord, if the host is not searching and we're not host friends, we want to join anyway
+-- Called when joining a game (checked is from Discord with 'is_discord_join'), if the host is not searching and we're not host friends, we want to join anyway
 mod:hook(MatchmakingStateRequestJoinGame, "rpc_matchmaking_request_join_lobby_reply", function(func, self, sender, client_cookie, host_cookie, reply_id, ...)
 	if reply_id == 4 and is_discord_join then
 		local old_reply = NetworkLookup.game_ping_reply[reply_id]
@@ -312,6 +313,12 @@ mod:hook(MatchmakingStateRequestJoinGame, "rpc_matchmaking_request_join_lobby_re
 
 	-- Call the original function
 	func(self, sender, client_cookie, host_cookie, reply_id, ...)
+end)
+
+-- Called when Joining a game, if the join fails, we disable 'is_discord_join' to not force non-Discord joins
+mod:hook_safe(MatchmakingStateRequestJoinGame, "_join_game_failed", function ()
+	mod:info("Join Failed, disabling Discord Forced Join")
+	is_discord_join = false
 end)
 
 --[[
