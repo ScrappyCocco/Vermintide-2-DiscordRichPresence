@@ -87,6 +87,11 @@ local function is_in_lobby()
 	return get_local_player().network_manager.matchmaking_manager._ingame_ui.is_in_inn
 end
 
+--- Function that return if the current match is private
+local function is_match_private()
+	return Managers.matchmaking:is_game_private()
+end
+
 -- Function that return if the current host is looking for players or not
 local function is_host_matchmaking()
 	return get_local_player().network_manager.matchmaking_manager:is_game_matchmaking()
@@ -180,7 +185,7 @@ end
 
 -- Discord Callback of joinRequest - Executed when an user press "Ask to Join" on Discord
 function discordRPC.joinRequest(userId, username)
-	if is_host_matchmaking() or can_users_join_lobby_always then -- Auto-accept request
+	if (is_host_matchmaking() or can_users_join_lobby_always) and not is_match_private() then -- Auto-accept request
 		mod:echo(mod:localize("discord_join_accept_message", username))
 		discordRPC.respond(userId, "yes")
 		mod:info("Sent Discord Join Reply: YES to " .. username .. " ID:" .. userId)
