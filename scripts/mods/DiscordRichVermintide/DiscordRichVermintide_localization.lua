@@ -37,11 +37,11 @@ return {
 	},
 	settings_always_join_you_tooltip = {
 		en = "Let others join your lobby from Discord even if you're doing your things alone and you aren't open for other players (in the Keep for example).\n" ..
-			"(Remember that only your Discord friends can click 'Ask to Join') \n\n" ..
+			"(Remember that only your Discord friends can click 'Ask to Join', and that this does not apply to private matches) \n\n" ..
 			"If you deactivate this, you have to send a chat invite in Discord to let people join your lobby before a game. \n\n" ..
 			"Unchecking this doesn't block other people from joining your game using Discord if it's open (during matchmaking or during a non-private game) \n\n",
 		it = "Permette agli altri di unirsi tramite Discord alla tua lobby, anche se sei da solo e non stai cercando altri giocatori (nella Fortezza per esempio).\n" ..
-			"(Ricorda che solo i tuoi amici di Discord possono cliccare 'Chiedi di unirti') \n\n" ..
+			"(Ricorda che solo i tuoi amici di Discord possono cliccare 'Chiedi di unirti', e che questo non funziona se la partita è privata) \n\n" ..
 			"Se disattivi questa opzione, dovrai mandare un invito nella chat di Discord per permettere agli altri giocatori di unirsi prima di una partita. \n\n" ..
 			"Disattivare questa opzione non blocca l'unione di altri giocatori alla partita tramite Discord quando aperta (durante il matchmaking o durante una partita non-privata)"
 	},

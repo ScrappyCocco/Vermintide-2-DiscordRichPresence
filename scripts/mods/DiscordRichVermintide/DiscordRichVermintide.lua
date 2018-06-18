@@ -19,7 +19,7 @@ local is_discord_join = false -- Used to skip friends check on join, but only if
 local saved_host_id = "" -- Used to save who is the current host i joined, used for creating the PartyID
 
 -- Settings variables, being read from settings
-local can_users_join_lobby_always = mod:get("can_other_people_always_join_you") -- Used to know if random people can join your lobby (when you're alone in the keep for example)
+local can_users_join_lobby_always = mod:get("can_other_people_always_join_you") -- Used to know if your Discord friends can join your lobby (when you're alone in the keep for example)
 local is_joining_from_discord_active = mod:get("is_discord_ask_to_join_enabled") -- Used to know if the user want the button "Ask to Join" on Discord
 
 -- Discord Presence Table (Empty on start)
@@ -87,7 +87,7 @@ local function is_in_lobby()
 	return get_local_player().network_manager.matchmaking_manager._ingame_ui.is_in_inn
 end
 
---- Function that return if the current match is private
+-- Function that return if the current match is private
 local function is_match_private()
 	return Managers.matchmaking:is_game_private()
 end
@@ -252,7 +252,7 @@ mod:hook_safe(StateIngame, "on_enter", function ()
 			saved_lobby_id = nil
 		end
 	end
-	--Update Discord Rich Presence
+	-- Update Discord Rich Presence
 	set_timestamp_to_now()
 	update_rich_list()
 	update_rich()
@@ -260,6 +260,7 @@ end)
 
 -- Character changed, need to update the Discord rich
 mod:hook_safe(CharacterSelectionStateCharacter, "_respawn_player", function ()
+	mod:info("Discord Rich update for _respawn_player")
 	update_rich_list()
 	update_rich()
 end)
