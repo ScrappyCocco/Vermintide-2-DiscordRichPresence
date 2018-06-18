@@ -14,7 +14,7 @@ local last_loading_level_key = "" -- Used to check which level is currently bein
 
 local game_started = false -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
 local saved_lobby_id = nil -- The lobby ID to join once the game is started, nil if not used
-local is_discord_join = false -- Used to skip friends check on join, but only if is a Discord join
+local is_discord_join = false -- Used to skip friends check and the host reply on join, but only if is a Discord join
 
 local saved_host_id = "" -- Used to save who is the current host i joined, used for creating the PartyID
 
@@ -314,17 +314,19 @@ mod:hook(MatchmakingStateRequestJoinGame, "rpc_matchmaking_request_join_lobby_re
 		local old_reply = NetworkLookup.game_ping_reply[reply_id]
 		is_discord_join = false
 		reply_id = 1
-		mod:info("Reply " .. old_reply .. " changed with " .. NetworkLookup.game_ping_reply[reply_id])
+		mod:info("(Forced Join) Reply " .. old_reply .. " changed with " .. NetworkLookup.game_ping_reply[reply_id] .. " - disabled Discord forced join")
 	end
 
 	-- Call the original function
 	func(self, sender, client_cookie, host_cookie, reply_id, ...)
 end)
 
--- Called when Joining a game, if the join fails, we disable 'is_discord_join' to not force non-Discord joins
-mod:hook_safe(MatchmakingStateRequestJoinGame, "_join_game_failed", function ()
-	mod:info("Join Failed, disabling Discord Forced Join")
-	is_discord_join = false
+-- Called when exiting the status MatchmakingStateRequestJoinGame, if is_discord_join is true, let's set it to false because we used it
+mod:hook_safe(MatchmakingStateRequestJoinGame, "on_exit", function ()
+	if is_discord_join then
+		mod:info("MatchmakingStateRequestJoinGame - on_exit - disabled Discord forced join")
+		is_discord_join = false
+	end
 end)
 
 --[[
