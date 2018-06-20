@@ -31,6 +31,10 @@ return {
 		en = "as %s",
 		it = "come %s"
 	},
+	discord_presence_modded_realm = {
+		en = "Modded",
+		it = "Modded"
+	},
 	settings_always_join_you_title = {
 		en = "Let others join without a Discord invitation",
 		it = "Permetti di unirsi senza un invito Discord"

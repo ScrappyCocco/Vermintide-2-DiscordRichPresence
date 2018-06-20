@@ -92,6 +92,11 @@ local function is_match_private()
 	return Managers.matchmaking:is_game_private()
 end
 
+-- Function that return if the user is in the modded realm or not
+local function is_in_modded_realm()
+	return script_data["eac-untrusted"]
+end
+
 -- Function that return if the current host is looking for players or not
 local function is_host_matchmaking()
 	return get_local_player().network_manager.matchmaking_manager:is_game_matchmaking()
@@ -145,12 +150,16 @@ local function update_rich_list()
 	local current_lv_key = get_current_level_key()
 	local current_lv_name = get_level_name(current_lv_key)
 	local career_name_translated = get_player_career_name_translated()
+	-- If in modded realm, append a string that indicate it
+	if is_in_modded_realm() then
+		current_state = "(" .. mod:localize("discord_presence_modded_realm") .. ") "
+	end
 	-- Generate current_state based on current map
 	if is_in_lobby() then
-		current_state = mod:localize("discord_presence_in_inn")
+		current_state = current_state .. mod:localize("discord_presence_in_inn")
 		large_image_text = current_lv_name
 	else
-		current_state = "[" .. get_difficulty_name() .. "] " .. current_lv_name
+		current_state = current_state .. "[" .. get_difficulty_name() .. "] " .. current_lv_name
 		large_image_text = get_difficulty_name() .. " - " .. current_lv_name
 	end
 	-- Update the Discord Presence Details
