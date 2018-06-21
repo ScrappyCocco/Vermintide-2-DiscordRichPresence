@@ -9,18 +9,21 @@ local appId = require("scripts/mods/DiscordRichVermintide/applicationId")
 
 local current_version = "0.30" -- Used only to print the version of the mod loaded
 local last_number_of_players = 0 -- Used to store the number of current human players (0 if currently loading)
-local last_timestamp_saved = 0 -- Used to store the time of begin of the timer
 local last_loading_level_key = "" -- Used to check which level is currently being loaded
 
-local game_started = false -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
 local saved_lobby_id = nil -- The lobby ID to join once the game is started, nil if not used
 local is_discord_join = false -- Used to skip friends check and the host reply on join, but only if is a Discord join
-
-local saved_host_id = "" -- Used to save who is the current host i joined, used for creating the PartyID
 
 -- Settings variables, being read from settings
 local can_users_join_lobby_always = mod:get("can_other_people_always_join_you") -- Used to know if your Discord friends can join your lobby (when you're alone in the keep for example)
 local is_joining_from_discord_active = mod:get("is_discord_ask_to_join_enabled") -- Used to know if the user want the button "Ask to Join" on Discord
+
+-- Variables in persistent_table, must remain saved if mod is reloaded
+local discord_persistent_variables = mod:persistent_table("discord_persistent_variables", {
+	last_timestamp_saved = 0, -- Used to store the time of begin of the timer
+	game_started = false, -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
+	saved_host_id = "" -- Used to save who is the current host i joined, used for creating the PartyID
+})
 
 -- Discord Presence Table (Empty on start)
 local discord_presence = {
@@ -33,7 +36,7 @@ local discord_presence = {
 
 -- Function that return the current timestamp
 local function set_timestamp_to_now()
-	last_timestamp_saved = os.time()
+	discord_persistent_variables["last_timestamp_saved"] = os.time()
 end
 
 -- Function that return the current player table
@@ -124,12 +127,12 @@ end
 -- Function that create an unique party is that is used to create single-use invitations
 local function get_unique_party_id()
 	if is_current_player_host() then
-		if get_local_player().peer_id ~= saved_host_id then -- If i'm the host, they should be equal
+		if get_local_player().peer_id ~= discord_persistent_variables["saved_host_id"] then -- If i'm the host, they should be equal
 			mod:warning("Found two different peer_id, this should not happen :thinking:")
 		end
 		return (get_local_player().peer_id .. get_lobby_steam_id() .. get_current_level_key())
 	else
-		return (saved_host_id .. get_lobby_steam_id() .. get_current_level_key())
+		return (discord_persistent_variables["saved_host_id"] .. get_lobby_steam_id() .. get_current_level_key())
 	end
 end
 
@@ -173,13 +176,21 @@ local function update_rich_list()
 		partyId = get_unique_party_id(),
 		partySize = last_number_of_players,
 		partyMax = 4,
-		startTimestamp = last_timestamp_saved,
+		startTimestamp = discord_persistent_variables["last_timestamp_saved"],
 		joinSecret = get_lobby_steam_id()
 	}
 	if not is_joining_from_discord_active then
 		discord_presence.joinSecret = nil
 	end
 	mod:info("Updated Discord Rich List with new data")
+end
+
+local function discord_mod_initialization()
+	-- Init Discord class
+	discordRPC.initialize(appId, true, "552500")
+	-- Discord Rich status init
+	update_rich()
+	mod:info("DiscordRichVermintide loaded - ver " .. current_version)
 end
 
 --[[
@@ -210,7 +221,7 @@ function discordRPC.joinGame(joinSecret)
 	mod:echo(mod:localize("discord_joining_name"))
 	mod:info("discordRPC.joinGame, enabling Discord Forced Join")
 	is_discord_join = true
-	if not game_started then -- Game not started, save the id for later
+	if not discord_persistent_variables["game_started"] then -- Game not started, save the id for later
 		saved_lobby_id = joinSecret
 		mod:info("Saved joinSecret for later, game is starting...")
 	else -- Join now
@@ -243,19 +254,10 @@ end
 	Mod Hooks
 --]]
 
--- Init Discord RPC on StateSplashScreen.on_enter
-mod:hook_safe(StateSplashScreen, "on_enter", function ()
-	-- Init Discord class
-	discordRPC.initialize(appId, true, "552500")
-	-- Discord Rich status init
-	update_rich()
-	mod:info("DiscordRichVermintide loaded - ver " .. current_version)
-end)
-
 -- Update Discord RPC when the player is InGame (in lobby/in a mission)
 mod:hook_safe(StateIngame, "on_enter", function ()
-	if not game_started then -- First start of the game
-		game_started = true
+	if not discord_persistent_variables["game_started"] then -- First start of the game
+		discord_persistent_variables["game_started"] = true
 		if saved_lobby_id ~= nil then -- The player want to Join
 			join_game_with_id(saved_lobby_id)
 			saved_lobby_id = nil
@@ -311,8 +313,8 @@ end)
 -- Called when Joining a Game as client, the party leader change, need to save the peer_id for the partyID
 mod:hook_safe(PartyManager, "set_leader", function (self_, peer_id)
 	if peer_id ~= nil then
-		if saved_host_id ~= peer_id then
-			saved_host_id = peer_id
+		if discord_persistent_variables["saved_host_id"] ~= peer_id then
+			discord_persistent_variables["saved_host_id"] = peer_id
 		end
 	end
 end)
@@ -362,4 +364,9 @@ end
 -- Call when all mods are being unloaded, shutdown Discord rich
 mod.on_unload = function()
 	discordRPC.shutdown()
+	mod:info("DiscordRichVermintide turned off - shutdown()")
 end
+
+-- Init the mod on game start or on mods reload
+mod:info("DiscordRichVermintide initialization...")
+discord_mod_initialization()
