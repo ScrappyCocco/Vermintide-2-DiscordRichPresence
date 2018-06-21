@@ -15,7 +15,7 @@ local saved_lobby_id = nil -- The lobby ID to join once the game is started, nil
 local is_discord_join = false -- Used to skip friends check and the host reply on join, but only if is a Discord join
 
 -- Settings variables, being read from settings
-local can_users_join_lobby_always = mod:get("can_other_people_always_join_you") -- Used to know if your Discord friends can join your lobby (when you're alone in the keep for example)
+local can_users_join_lobby_always = mod:get("can_other_people_always_join_you") -- Used to know if your Discord friends can join your lobby (when you're alone in the Keep for example)
 local is_joining_from_discord_active = mod:get("is_discord_ask_to_join_enabled") -- Used to know if the user want the button "Ask to Join" on Discord
 
 -- Variables in persistent_table, must remain saved if mod is reloaded
@@ -27,7 +27,8 @@ local discord_persistent_variables = mod:persistent_table("discord_persistent_va
 
 -- Discord Presence Table (Empty on start)
 local discord_presence = {
-	details = mod:localize("discord_presence_starting_name")
+	details = mod:localize("discord_presence_starting_name"),
+	largeImageKey = "loading_image"
 }
 
 --[[
@@ -36,7 +37,7 @@ local discord_presence = {
 
 -- Function that return the current timestamp
 local function set_timestamp_to_now()
-	discord_persistent_variables["last_timestamp_saved"] = os.time()
+	discord_persistent_variables.last_timestamp_saved = os.time()
 end
 
 -- Function that return the current player table
@@ -67,12 +68,12 @@ end
 -- Function that get the player career name
 local function get_player_career_name()
 	local player = get_local_player()
-	return SPProfiles[player:profile_index()].careers[player:career_index()]
+	return SPProfiles[player:profile_index()].careers[player:career_index()].display_name
 end
 
 -- Function that get and translate the career name
 local function get_player_career_name_translated()
-	return Localize(get_player_career_name().display_name)
+	return Localize(get_player_career_name())
 end
 
 -- Function that get the number of current human players
@@ -124,15 +125,15 @@ local function get_lobby_steam_id()
 	return LobbyInternal.lobby_id(get_current_lobby_manager().lobby)
 end
 
--- Function that create an unique party is that is used to create single-use invitations
+-- Function that create an unique party is that is used to create single-use invitations (the invite is no longer valid if the map change)
 local function get_unique_party_id()
 	if is_current_player_host() then
-		if get_local_player().peer_id ~= discord_persistent_variables["saved_host_id"] then -- If i'm the host, they should be equal
+		if get_local_player().peer_id ~= discord_persistent_variables.saved_host_id then -- If i'm the host, they should be equal
 			mod:warning("Found two different peer_id, this should not happen :thinking:")
 		end
 		return (get_local_player().peer_id .. get_lobby_steam_id() .. get_current_level_key())
 	else
-		return (discord_persistent_variables["saved_host_id"] .. get_lobby_steam_id() .. get_current_level_key())
+		return (discord_persistent_variables.saved_host_id .. get_lobby_steam_id() .. get_current_level_key())
 	end
 end
 
@@ -171,12 +172,12 @@ local function update_rich_list()
 		state = mod:localize("discord_presence_as_career", career_name_translated),
 		largeImageKey = current_lv_key,
 		largeImageText = large_image_text,
-		smallImageKey = get_player_career_name().display_name,
-		smallImageText = get_player_character_name_translated() .. " - " .. career_name_translated,
+		smallImageKey = get_player_career_name(),
+		smallImageText = get_player_character_name_translated() .. " - " .. career_name_translated .. " - Level: 30 - Power: 450",
 		partyId = get_unique_party_id(),
 		partySize = last_number_of_players,
 		partyMax = 4,
-		startTimestamp = discord_persistent_variables["last_timestamp_saved"],
+		startTimestamp = discord_persistent_variables.last_timestamp_saved,
 		joinSecret = get_lobby_steam_id()
 	}
 	if not is_joining_from_discord_active then
@@ -216,12 +217,12 @@ function discordRPC.joinRequest(userId, username)
 	end
 end
 
--- Discord Callback of joinGame - Executed when the user Join
+-- Discord Callback of joinGame - Executed when the user Join from Discord
 function discordRPC.joinGame(joinSecret)
 	mod:echo(mod:localize("discord_joining_name"))
 	mod:info("discordRPC.joinGame, enabling Discord Forced Join")
 	is_discord_join = true
-	if not discord_persistent_variables["game_started"] then -- Game not started, save the id for later
+	if not discord_persistent_variables.game_started then -- Game not started, save the id for later
 		saved_lobby_id = joinSecret
 		mod:info("Saved joinSecret for later, game is starting...")
 	else -- Join now
@@ -245,7 +246,8 @@ end
 local function update_rich_with_loading_level()
 	discord_presence = {
 		details = mod:localize("discord_presence_loading_level"),
-		state = "(" .. get_level_name(last_loading_level_key) .. ")"
+		state = "(" .. get_level_name(last_loading_level_key) .. ")",
+		largeImageKey = "loading_image"
 	}
 	update_rich()
 end
@@ -256,8 +258,8 @@ end
 
 -- Update Discord RPC when the player is InGame (in lobby/in a mission)
 mod:hook_safe(StateIngame, "on_enter", function ()
-	if not discord_persistent_variables["game_started"] then -- First start of the game
-		discord_persistent_variables["game_started"] = true
+	if not discord_persistent_variables.game_started then -- First start of the game
+		discord_persistent_variables.game_started = true
 		if saved_lobby_id ~= nil then -- The player want to Join
 			join_game_with_id(saved_lobby_id)
 			saved_lobby_id = nil
@@ -313,8 +315,8 @@ end)
 -- Called when Joining a Game as client, the party leader change, need to save the peer_id for the partyID
 mod:hook_safe(PartyManager, "set_leader", function (self_, peer_id)
 	if peer_id ~= nil then
-		if discord_persistent_variables["saved_host_id"] ~= peer_id then
-			discord_persistent_variables["saved_host_id"] = peer_id
+		if discord_persistent_variables.saved_host_id ~= peer_id then
+			discord_persistent_variables.saved_host_id = peer_id
 		end
 	end
 end)
