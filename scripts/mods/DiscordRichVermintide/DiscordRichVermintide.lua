@@ -45,6 +45,11 @@ local function get_local_player()
 	return Managers.player:local_player()
 end
 
+-- Function that return the SPProfile based on player current character
+local function get_local_player_sp_profile()
+	return SPProfiles[get_local_player():profile_index()]
+end
+
 -- Function that return the current level key
 local function get_current_level_key()
 	return Managers.state.game_mode:level_key()
@@ -57,7 +62,7 @@ end
 
 -- Function that get the player character name
 local function get_player_character_name()
-	return SPProfiles[get_local_player():profile_index()].character_name
+	return get_local_player_sp_profile().character_name
 end
 
 -- Function that get and translate the character name
@@ -67,13 +72,22 @@ end
 
 -- Function that get the player career name
 local function get_player_career_name()
-	local player = get_local_player()
-	return SPProfiles[player:profile_index()].careers[player:career_index()].display_name
+	return get_local_player_sp_profile().careers[get_local_player():career_index()].display_name
 end
 
 -- Function that get and translate the career name
 local function get_player_career_name_translated()
 	return Localize(get_player_career_name())
+end
+
+-- Function that get and return the current character level
+local function get_player_character_level()
+	return ExperienceSettings.get_level(ExperienceSettings.get_experience(get_local_player_sp_profile().unit_name))
+end
+
+-- Function that get and return the power level for the current career
+local function get_player_career_power_string()
+	return tostring(UIUtils.presentable_hero_power_level(BackendUtils.get_total_power_level(get_local_player_sp_profile().unit_name, get_player_career_name())))
 end
 
 -- Function that get the number of current human players
@@ -173,7 +187,10 @@ local function update_rich_list()
 		largeImageKey = current_lv_key,
 		largeImageText = large_image_text,
 		smallImageKey = get_player_career_name(),
-		smallImageText = get_player_character_name_translated() .. " - " .. career_name_translated .. " - Level: 30 - Power: 450",
+		smallImageText = get_player_character_name_translated() .. " - " .. 
+			career_name_translated .. " - " .. 
+			mod:localize("discord_presence_level_string", get_player_character_level()) .. " - " .. 
+			mod:localize("discord_presence_power_string", get_player_career_power_string()),
 		partyId = get_unique_party_id(),
 		partySize = last_number_of_players,
 		partyMax = 4,

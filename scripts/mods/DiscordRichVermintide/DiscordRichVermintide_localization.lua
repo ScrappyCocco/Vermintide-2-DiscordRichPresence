@@ -35,6 +35,14 @@ return {
 		en = "Modded",
 		it = "Modded"
 	},
+	discord_presence_level_string = {
+		en = "Level: %s",
+		it = "Livello: %s"
+	},
+	discord_presence_power_string = {
+		en = "Power: %s",
+		it = "Potenza: %s"
+	},
 	settings_always_join_you_title = {
 		en = "Let others join without a Discord invitation",
 		it = "Permetti di unirsi senza un invito Discord"
