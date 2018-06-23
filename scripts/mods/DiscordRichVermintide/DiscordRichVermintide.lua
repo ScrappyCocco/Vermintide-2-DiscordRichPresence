@@ -139,7 +139,7 @@ local function get_lobby_steam_id()
 	return LobbyInternal.lobby_id(get_current_lobby_manager().lobby)
 end
 
--- Function that create an unique party is that is used to create single-use invitations (the invite is no longer valid if the map change)
+-- Function that create an unique party ID that is used to create single-use invitations (the invite is no longer valid if the map change)
 local function get_unique_party_id()
 	if is_current_player_host() then
 		if get_local_player().peer_id ~= discord_persistent_variables.saved_host_id then -- If i'm the host, they should be equal

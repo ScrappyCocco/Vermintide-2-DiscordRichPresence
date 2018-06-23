@@ -1,7 +1,7 @@
 return {
 	mod_description = {
-		en = "Discord Rich Vermintide is a Vermintide 2 mods that show on Discord the character you are playing and what are you doing.",
-		it = "Discord Rich Vermintide è una mod per Vermintide 2 che mostra su Discord che personaggio stai giocando e cosa stai facendo."
+		en = "Discord Rich Vermintide is a Vermintide 2 mods that show on Discord the character you are playing and infos about what are you doing.",
+		it = "Discord Rich Vermintide è una mod per Vermintide 2 che mostra su Discord che personaggio stai giocando e informazioni su cosa stai facendo."
 	},
 	discord_join_accept_message = {
 		en = "%s is joining you from Discord",
