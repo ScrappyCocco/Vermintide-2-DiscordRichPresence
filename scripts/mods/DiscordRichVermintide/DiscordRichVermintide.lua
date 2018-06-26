@@ -106,6 +106,11 @@ local function is_in_lobby()
 	return get_local_player().network_manager.matchmaking_manager._ingame_ui.is_in_inn
 end
 
+-- Function that return if the player is playing the prologue
+local function is_player_playing_prologue()
+	return get_current_level_key() == "prologue"
+end
+
 -- Function that return if the current match is private
 local function is_match_private()
 	return Managers.matchmaking:is_game_private()
@@ -154,6 +159,9 @@ end
 
 -- Function that check if the hero power has changed, if yes update the variabile and return true, otherwise return false
 local function update_saved_power()
+	if is_player_playing_prologue() then -- If in the prologue ignore hero power
+		return
+	end
 	if get_player_career_power_string() ~= discord_persistent_variables.saved_power then
 		discord_persistent_variables.saved_power = get_player_career_power_string()
 		mod:info("Power Level changed, variabile updated")
@@ -209,8 +217,8 @@ local function update_rich_list()
 		startTimestamp = discord_persistent_variables.last_timestamp_saved,
 		joinSecret = get_lobby_steam_id()
 	}
-	if not is_joining_from_discord_active then
-		discord_presence.joinSecret = nil
+	if (not is_joining_from_discord_active) or is_player_playing_prologue() then
+		discord_presence.joinSecret = nil -- Remove "Ask to join" button
 	end
 	mod:info("Updated Discord Rich List with new data")
 end
