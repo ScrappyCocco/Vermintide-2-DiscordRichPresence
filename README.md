@@ -11,7 +11,7 @@ Subscribe the mod on Steam, [it's in the Workshop](https://steamcommunity.com/sh
 
 Make sure you have **already installed the Vermintide Mod Framework**, you can download it [here](https://steamcommunity.com/sharedfiles/filedetails/?id=1369573612). Check that it's the first mod loaded in the launcher.
 
-Finally, install the [Discord Rich Library](https://github.com/ScrappyCocco/Vermintide-2---Discord-Rich-Presence/releases), you have to do this manually as mods cannot add external libraries to game files...
+Finally, install the [Discord Rich Library](https://github.com/ScrappyCocco/Vermintide-2-DiscordRichPresence/releases), you have to do this manually as mods cannot add external libraries to game files...
 
 ## Built Using
 
@@ -22,7 +22,7 @@ Finally, install the [Discord Rich Library](https://github.com/ScrappyCocco/Verm
 ## Authors
 
 * **ScrappyCocco** - *Mod creator*
-* _Thanks to all the people of Vermintide Modders Discord server, you helped me a lot_
+* _Thanks to all the people of Vermintide Modders Discord server, you helped me a lot (Special thanks to Arkii, bi and SkacikPL)_
 
 ## License
 
