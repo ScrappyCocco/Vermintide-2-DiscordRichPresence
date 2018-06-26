@@ -22,7 +22,8 @@ local is_joining_from_discord_active = mod:get("is_discord_ask_to_join_enabled")
 local discord_persistent_variables = mod:persistent_table("discord_persistent_variables", {
 	last_timestamp_saved = 0, -- Used to store the time of begin of the timer
 	game_started = false, -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
-	saved_host_id = "" -- Used to save who is the current host i joined, used for creating the PartyID
+	saved_host_id = "", -- Used to save who is the current host i joined, used for creating the PartyID
+	saved_power = 0 -- Used to save the hero power, to update it only when is necessary
 })
 
 -- Discord Presence Table (Empty on start)
@@ -151,6 +152,17 @@ local function get_unique_party_id()
 	end
 end
 
+-- Function that check if the hero power has changed, if yes update the variabile and return true, otherwise return false
+local function update_saved_power()
+	if get_player_career_power_string() ~= discord_persistent_variables.saved_power then
+		discord_persistent_variables.saved_power = get_player_career_power_string()
+		mod:info("Power Level changed, variabile updated")
+		return true
+	else
+		return false
+	end
+end
+
 --[[
 	Discord Rich Functions
 --]]
@@ -190,7 +202,7 @@ local function update_rich_list()
 		smallImageText = get_player_character_name_translated() .. " - " .. 
 			career_name_translated .. " - " .. 
 			mod:localize("discord_presence_level_string", get_player_character_level()) .. " - " .. 
-			mod:localize("discord_presence_power_string", get_player_career_power_string()),
+			mod:localize("discord_presence_power_string", discord_persistent_variables.saved_power),
 		partyId = get_unique_party_id(),
 		partySize = last_number_of_players,
 		partyMax = 4,
@@ -283,6 +295,7 @@ mod:hook_safe(StateIngame, "on_enter", function ()
 		end
 	end
 	-- Update Discord Rich Presence
+	update_saved_power()
 	set_timestamp_to_now()
 	update_rich_list()
 	update_rich()
@@ -291,6 +304,7 @@ end)
 -- Character changed, need to update the Discord rich
 mod:hook_safe(CharacterSelectionStateCharacter, "_respawn_player", function ()
 	mod:info("Discord Rich update for _respawn_player")
+	discord_persistent_variables.saved_power = get_player_career_power_string()
 	update_rich_list()
 	update_rich()
 end)
@@ -356,6 +370,14 @@ mod:hook_safe(MatchmakingStateRequestJoinGame, "on_exit", function ()
 	if is_discord_join then
 		mod:info("MatchmakingStateRequestJoinGame - on_exit - disabled Discord forced join")
 		is_discord_join = false
+	end
+end)
+
+-- Called when exiting the inventory view, check if the hero power has changed, if yes, send it to Discord
+mod:hook_safe(HeroView, "on_exit", function ()
+	if update_saved_power() then
+		update_rich_list()
+		update_rich()
 	end
 end)
 
