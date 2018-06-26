@@ -83,12 +83,12 @@ end
 
 -- Function that get and return the current character level
 local function get_player_character_level()
-	return ExperienceSettings.get_level(ExperienceSettings.get_experience(get_local_player_sp_profile().unit_name))
+	return ExperienceSettings.get_level(ExperienceSettings.get_experience(get_local_player_sp_profile().display_name))
 end
 
 -- Function that get and return the power level for the current career
 local function get_player_career_power_string()
-	return tostring(UIUtils.presentable_hero_power_level(BackendUtils.get_total_power_level(get_local_player_sp_profile().unit_name, get_player_career_name())))
+	return tostring(UIUtils.presentable_hero_power_level(BackendUtils.get_total_power_level(get_local_player_sp_profile().display_name, get_player_career_name())))
 end
 
 -- Function that get the number of current human players
