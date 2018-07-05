@@ -1,11 +1,3 @@
-mod = [
-	"DiscordRichVermintide"
-]
-
-package = [
-	"resource_packages/DiscordRichVermintide/DiscordRichVermintide"
-]
-
 lua = [
 	"scripts/mods/DiscordRichVermintide/*",
 	"scripts/mods/DiscordRichVermintide/lua-discordRPC/*"
