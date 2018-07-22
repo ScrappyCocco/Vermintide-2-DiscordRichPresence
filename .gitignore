@@ -1,3 +1,5 @@
 
 .vscode/*
 scripts/mods/DiscordRichVermintide/applicationId\.lua
+
+bundleV2/source/
