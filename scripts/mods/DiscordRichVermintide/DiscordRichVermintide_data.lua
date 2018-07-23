@@ -2,7 +2,7 @@ local mod = get_mod("DiscordRichVermintide")
 
 -- Mod Description and Settings
 local mod_data = {
-	name = "Vermintide 2 - Discord Rich Presence",   -- Readable mod name
+	name = "Discord Rich Presence",   -- Readable mod name
 	description = mod:localize("mod_description"),   -- Mod description
 	is_togglable = false,                            -- If the mod can be enabled/disabled
 	is_mutator = false,                              -- If the mod is mutator
