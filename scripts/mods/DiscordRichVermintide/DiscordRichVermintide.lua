@@ -7,7 +7,7 @@ local appId = require("scripts/mods/DiscordRichVermintide/applicationId")
 	Variables
 --]]
 
-local current_version = "0.30" -- Used only to print the version of the mod loaded
+local current_version = "0.31" -- Used only to print the version of the mod loaded
 local last_number_of_players = 0 -- Used to store the number of current human players (0 if currently loading)
 local last_loading_level_key = "" -- Used to check which level is currently being loaded
 
@@ -23,7 +23,8 @@ local discord_persistent_variables = mod:persistent_table("discord_persistent_va
 	last_timestamp_saved = 0, -- Used to store the time of begin of the timer
 	game_started = false, -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
 	saved_host_id = "", -- Used to save who is the current host i joined, used for creating the PartyID
-	saved_power = 0 -- Used to save the hero power, to update it only when is necessary
+	saved_power = 0, -- Used to save the hero power, to update it only when is necessary
+	is_benchmark_mode = false -- Used to save if the current level is the benchmark mode
 })
 
 -- Discord Presence Table (Empty on start)
@@ -111,6 +112,11 @@ local function is_player_playing_prologue()
 	return get_current_level_key() == "prologue"
 end
 
+-- Function that return if the player is playing the prologue or the benchmark to remove hero power and "Ask to Join" from Discord
+local function is_player_playing_special_level()
+	return is_player_playing_prologue() or discord_persistent_variables.is_benchmark_mode
+end
+
 -- Function that return if the current match is private
 local function is_match_private()
 	return Managers.matchmaking:is_game_private()
@@ -159,7 +165,7 @@ end
 
 -- Function that check if the hero power has changed, if yes update the variabile and return true, otherwise return false
 local function update_saved_power()
-	if is_player_playing_prologue() then -- If in the prologue ignore hero power
+	if is_player_playing_special_level() then -- If in a special level ignore hero power
 		return
 	end
 	if get_player_career_power_string() ~= discord_persistent_variables.saved_power then
@@ -217,7 +223,7 @@ local function update_rich_list()
 		startTimestamp = discord_persistent_variables.last_timestamp_saved,
 		joinSecret = get_lobby_steam_id()
 	}
-	if (not is_joining_from_discord_active) or is_player_playing_prologue() then
+	if (not is_joining_from_discord_active) or is_player_playing_special_level() then
 		discord_presence.joinSecret = nil -- Remove "Ask to join" button
 	end
 	mod:info("Updated Discord Rich List with new data")
@@ -292,6 +298,14 @@ end
 --[[
 	Mod Hooks
 --]]
+
+-- Update the variable is_benchmark_mode if the player is in the benchmark
+mod:hook_safe(StateInGameRunning, "on_enter", function (self, params)
+	discord_persistent_variables.is_benchmark_mode = false
+	if self._benchmark_handler then
+		discord_persistent_variables.is_benchmark_mode = true
+	end
+end)
 
 -- Update Discord RPC when the player is InGame (in lobby/in a mission)
 mod:hook_safe(StateIngame, "on_enter", function ()
