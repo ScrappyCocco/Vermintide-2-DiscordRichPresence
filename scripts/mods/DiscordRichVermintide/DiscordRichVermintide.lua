@@ -7,7 +7,7 @@ local appId = require("scripts/mods/DiscordRichVermintide/applicationId")
 	Variables
 --]]
 
-local current_version = "0.31" -- Used only to print the version of the mod loaded
+local current_version = "0.32" -- Used only to print the version of the mod loaded
 local last_number_of_players = 0 -- Used to store the number of current human players (0 if currently loading)
 local last_loading_level_key = "" -- Used to check which level is currently being loaded
 
