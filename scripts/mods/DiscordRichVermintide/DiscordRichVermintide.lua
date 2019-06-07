@@ -143,7 +143,7 @@ end
 
 -- Function that return the difficulty localized string
 -- It checks if Deathwish Onslaught are on to display that difficulty instead of Legend
--- (Special thanks to @danreeves for this)
+-- ("DwOns QoL" mod required - Special thanks to @danreeves for this)
 local function get_difficulty_name()
     local dw_enabled, ons_enabled = false, false
     local dwons_qol = get_mod("is-dwons-on")
