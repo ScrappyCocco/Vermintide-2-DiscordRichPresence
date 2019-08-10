@@ -74,7 +74,14 @@ end
 
 -- Function that get the player career name
 local function get_player_career_name()
-    return get_local_player_sp_profile().careers[get_local_player():career_index()].display_name
+    local index = get_local_player():career_index()
+    if index == nil then
+        -- Career index not ready, return nil and skip update
+        return index
+    else
+        -- Use the index
+        return get_local_player_sp_profile().careers[index].display_name
+    end
 end
 
 -- Function that get and translate the career name
@@ -89,7 +96,15 @@ end
 
 -- Function that get and return the power level for the current career
 local function get_player_career_power_string()
-    return tostring(UIUtils.presentable_hero_power_level(BackendUtils.get_total_power_level(get_local_player_sp_profile().display_name, get_player_career_name())))
+    local career_name = get_player_career_name()
+    -- Check that the career is not nil
+    if career_name == nil then
+        -- Career nil, return 0
+        return 0
+    else
+        -- Return actual power
+        return tostring(UIUtils.presentable_hero_power_level(BackendUtils.get_total_power_level(get_local_player_sp_profile().display_name, career_name)))
+    end
 end
 
 -- Function that get the number of current human players
@@ -206,6 +221,11 @@ end
 
 -- Update the rich presence details
 local function update_rich_list()
+    -- If the career is null, skip the discord update
+    if(get_player_career_name() == nil) then
+        return
+    end
+
     local current_state = ""
     local large_image_text = ""
     local current_lv_key = get_current_level_key()
@@ -344,6 +364,16 @@ end)
 mod:hook_safe(CharacterSelectionStateCharacter, "_respawn_player", function ()
     mod:info("Discord Rich update for _respawn_player")
     discord_persistent_variables.saved_power = get_player_career_power_string()
+    update_rich_list()
+    update_rich()
+end)
+
+-- Character changed, need to update the Discord rich
+-- (Mostly because at startup the career may be null)
+mod:hook_safe(PlayerManager, "rpc_to_client_spawn_player", function ()
+    -- Update hero power
+    update_saved_power()
+    -- Update discord rich
     update_rich_list()
     update_rich()
 end)
