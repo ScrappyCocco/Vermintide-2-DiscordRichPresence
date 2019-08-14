@@ -24,7 +24,9 @@ local discord_persistent_variables = mod:persistent_table("discord_persistent_va
     game_started = false, -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
     saved_host_id = "", -- Used to save who is the current host i joined, used for creating the PartyID
     saved_power = 0, -- Used to save the hero power, to update it only when is necessary
-    is_benchmark_mode = false -- Used to save if the current level is the benchmark mode
+    is_benchmark_mode = false, -- Used to save if the current level is the benchmark mode,
+    weave_start_timestamp = 0,
+    weave_end_timestamp = 0
 })
 
 -- Discord Presence Table (Empty on start)
@@ -57,6 +59,10 @@ local function get_current_level_key()
     return Managers.state.game_mode:level_key()
 end
 
+local function get_current_game_mode_key()
+    return Managers.state.game_mode._game_mode_key
+end
+
 -- Function that get the level name from the level key
 local function get_level_name(level_key)
     return Localize(LevelSettings[level_key].display_name)
@@ -74,6 +80,9 @@ end
 
 -- Function that get the player career name
 local function get_player_career_name()
+    mod:info("Pre dump")
+    mod:dump(Managers.player, nil, 2)
+    mod:info("Post dump")
     local index = get_local_player():career_index()
     if index == nil then
         -- Career index not ready, return nil and skip update
@@ -140,6 +149,19 @@ end
 -- Function that return if the user is in the modded realm or not
 local function is_in_modded_realm()
     return script_data["eac-untrusted"]
+end
+
+local function get_current_weave_wind()
+    mod:echo(Localize(Managers.weave:get_active_wind()))
+    return Managers.weave:get_active_wind()
+end
+
+local function get_translated_weave_name()
+    return Localize(Managers.weave:get_active_weave_template().display_name)
+end
+
+local function get_weave_number()
+    return tostring(Managers.weave:get_active_weave_template().tier)
 end
 
 -- Function that return if the current host is looking for players or not
@@ -226,11 +248,22 @@ local function update_rich_list()
         return
     end
 
+    -- Check if the player is playing winds of magic
+    local in_weave = (get_current_game_mode_key() == "weave")
+
     local current_state = ""
     local large_image_text = ""
-    local current_lv_key = get_current_level_key()
-    local current_lv_name = get_level_name(current_lv_key)
     local career_name_translated = get_player_career_name_translated()
+    -- Set the level image key, winds of magic use wind icon
+    local current_lv_key = nil
+    local current_lv_name = nil
+    if in_weave then
+        -- current_lv_key = get_current_weave_wind()
+        current_lv_key = "inn_level"
+    else
+        current_lv_key = get_current_level_key()
+        current_lv_name = get_level_name(current_lv_key)
+    end
     -- If in modded realm, append a string that indicate it
     if is_in_modded_realm() then
         current_state = "(" .. mod:localize("discord_presence_modded_realm") .. ") "
@@ -240,8 +273,13 @@ local function update_rich_list()
         current_state = current_state .. mod:localize("discord_presence_in_inn")
         large_image_text = current_lv_name
     else
-        current_state = current_state .. "[" .. get_difficulty_name() .. "] " .. current_lv_name
-        large_image_text = get_difficulty_name() .. " - " .. current_lv_name
+        if in_weave then
+            current_state = current_state .. "[WoM-" .. get_weave_number() .. "]" .. get_translated_weave_name()
+            large_image_text = get_weave_number() .. " - " .. get_translated_weave_name()
+        else
+            current_state = current_state .. "[" .. get_difficulty_name() .. "] " .. current_lv_name
+            large_image_text = get_difficulty_name() .. " - " .. current_lv_name
+        end
     end
     -- Update the Discord Presence Details
     discord_presence = {
@@ -257,9 +295,16 @@ local function update_rich_list()
         partyId = get_unique_party_id(),
         partySize = last_number_of_players,
         partyMax = 4,
-        startTimestamp = discord_persistent_variables.last_timestamp_saved,
         joinSecret = get_lobby_steam_id()
     }
+    -- Add time
+    if in_weave then
+        discord_presence.startTimestamp = discord_persistent_variables.weave_start_timestamp
+        discord_presence.endTimestamp = discord_persistent_variables.weave_end_timestamp
+    else
+        discord_presence.startTimestamp = discord_persistent_variables.last_timestamp_saved
+    end
+    -- Add or remove the join button
     if (not is_joining_from_discord_active) or is_player_playing_special_level() then
         discord_presence.joinSecret = nil -- Remove "Ask to join" button
     end
@@ -390,6 +435,18 @@ mod:hook_safe(StateLoadingRunning, "update", function (self)
         last_loading_level_key = self.parent:get_next_level_key()
         update_rich_with_loading_level()
     end
+end)
+
+mod:hook_safe(GameModeWeave, "event_local_player_spawned", function ()
+    update_rich_list()
+    update_rich()
+end)
+
+mod:hook_safe(WeaveManager, "_set_time_left", function (self, remaining_time)
+    discord_persistent_variables.weave_start_timestamp = os.time()
+    discord_persistent_variables.weave_end_timestamp = discord_persistent_variables.weave_start_timestamp + remaining_time
+    update_rich_list()
+    update_rich()
 end)
 
 -- Called when being the Server
