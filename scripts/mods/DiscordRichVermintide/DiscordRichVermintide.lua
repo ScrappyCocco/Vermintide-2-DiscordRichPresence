@@ -59,6 +59,8 @@ local function get_current_level_key()
     return Managers.state.game_mode:level_key()
 end
 
+-- Function that return the current game mode key
+-- Used mostly to check if the current gm is weaves
 local function get_current_game_mode_key()
     return Managers.state.game_mode._game_mode_key
 end
@@ -152,18 +154,22 @@ local function is_in_modded_realm()
     return script_data["eac-untrusted"]
 end
 
+-- Function that return the current weave wind key
 local function get_current_weave_wind_key()
     return Managers.weave:get_active_wind()
 end
 
+-- Function that return the wind name translated
 local function get_current_weave_wind_translated()
     return Localize(Managers.weave:get_active_wind_settings().display_name)
 end
 
+-- Function that return the weave name translated
 local function get_translated_weave_name()
     return Localize(Managers.weave:get_active_weave_template().display_name)
 end
 
+-- Function that return the weave number
 local function get_weave_number()
     return tostring(Managers.weave:get_active_weave_template().tier)
 end
@@ -440,11 +446,13 @@ mod:hook_safe(StateLoadingRunning, "update", function (self)
     end
 end)
 
+-- Hook safe to update data on player spawn in Weave
 mod:hook_safe(GameModeWeave, "event_local_player_spawned", function ()
     update_rich_list()
     update_rich()
 end)
 
+-- Hook safe that save the time of the Winds of Magic match
 mod:hook_safe(WeaveManager, "_set_time_left", function (self, remaining_time)
     discord_persistent_variables.weave_start_timestamp = os.time()
     discord_persistent_variables.weave_end_timestamp = discord_persistent_variables.weave_start_timestamp + remaining_time
