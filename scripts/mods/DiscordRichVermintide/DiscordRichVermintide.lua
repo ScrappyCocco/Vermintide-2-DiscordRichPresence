@@ -80,16 +80,17 @@ end
 
 -- Function that get the player career name
 local function get_player_career_name()
-    mod:info("Pre dump")
-    mod:dump(Managers.player, nil, 2)
-    mod:info("Post dump")
-    local index = get_local_player():career_index()
-    if index == nil then
-        -- Career index not ready, return nil and skip update
-        return index
+    if get_local_player() == nil then
+        return nil
     else
-        -- Use the index
-        return get_local_player_sp_profile().careers[index].display_name
+        local index = get_local_player():career_index()
+        if index == nil then
+            -- Career index not ready, return nil and skip update
+            return index
+        else
+            -- Use the index
+            return get_local_player_sp_profile().careers[index].display_name
+        end
     end
 end
 
@@ -151,9 +152,12 @@ local function is_in_modded_realm()
     return script_data["eac-untrusted"]
 end
 
-local function get_current_weave_wind()
-    mod:echo(Localize(Managers.weave:get_active_wind()))
+local function get_current_weave_wind_key()
     return Managers.weave:get_active_wind()
+end
+
+local function get_current_weave_wind_translated()
+    return Localize(Managers.weave:get_active_wind_settings().display_name)
 end
 
 local function get_translated_weave_name()
@@ -258,8 +262,7 @@ local function update_rich_list()
     local current_lv_key = nil
     local current_lv_name = nil
     if in_weave then
-        -- current_lv_key = get_current_weave_wind()
-        current_lv_key = "inn_level"
+        current_lv_key = get_current_weave_wind_key()
     else
         current_lv_key = get_current_level_key()
         current_lv_name = get_level_name(current_lv_key)
@@ -275,7 +278,7 @@ local function update_rich_list()
     else
         if in_weave then
             current_state = current_state .. "[WoM-" .. get_weave_number() .. "]" .. get_translated_weave_name()
-            large_image_text = get_weave_number() .. " - " .. get_translated_weave_name()
+            large_image_text = get_weave_number() .. " - " .. get_translated_weave_name() .. " (" .. get_current_weave_wind_translated() .. ")"
         else
             current_state = current_state .. "[" .. get_difficulty_name() .. "] " .. current_lv_name
             large_image_text = get_difficulty_name() .. " - " .. current_lv_name
