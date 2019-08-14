@@ -25,8 +25,8 @@ local discord_persistent_variables = mod:persistent_table("discord_persistent_va
     saved_host_id = "", -- Used to save who is the current host i joined, used for creating the PartyID
     saved_power = 0, -- Used to save the hero power, to update it only when is necessary
     is_benchmark_mode = false, -- Used to save if the current level is the benchmark mode,
-    weave_start_timestamp = 0,
-    weave_end_timestamp = 0
+    weave_start_timestamp = 0, -- Used to save the timestamp of the start of the Winds of Magic match
+    weave_end_timestamp = 0 -- Used to save the ending timestamp of the Winds of Magic match (so it will appear as "<time> left" on discord)
 })
 
 -- Discord Presence Table (Empty on start)
