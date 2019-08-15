@@ -452,10 +452,8 @@ end)
 
 -- Hook safe to update data on player spawn in Weave
 mod:hook_safe(GameModeWeave, "event_local_player_spawned", function ()
-    mod:echo("Spawn detected")
     if discord_persistent_variables.weave_total_time == 0 then
-        mod:echo("Time detected 0")
-        mod:echo("Updating time reading " .. Managers.weave._remaining_time)
+        mod:info("Client updating weave_total_time")
         discord_persistent_variables.weave_total_time = Managers.weave._remaining_time
     end
     mod:info("Setting start and end weave time")
