@@ -7,7 +7,7 @@ local appId = require("scripts/mods/DiscordRichVermintide/applicationId")
     Variables
 --]]
 
-local current_version = "0.33" -- Used only to print the version of the mod loaded
+local current_version = "0.35" -- Used only to print the version of the mod loaded
 local last_number_of_players = 0 -- Used to store the number of current human players (0 if currently loading)
 local last_loading_level_key = "" -- Used to check which level is currently being loaded
 
@@ -24,7 +24,10 @@ local discord_persistent_variables = mod:persistent_table("discord_persistent_va
     game_started = false, -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
     saved_host_id = "", -- Used to save who is the current host i joined, used for creating the PartyID
     saved_power = 0, -- Used to save the hero power, to update it only when is necessary
-    is_benchmark_mode = false -- Used to save if the current level is the benchmark mode
+    is_benchmark_mode = false, -- Used to save if the current level is the benchmark mode
+    weave_total_time = 0, -- Used to save the time of the wave, to add at the player spawn
+    weave_start_timestamp = 0, -- Used to save the timestamp of the start of the Winds of Magic match
+    weave_end_timestamp = 0 -- Used to save the ending timestamp of the Winds of Magic match (so it will appear as "<time> left" on discord)
 })
 
 -- Discord Presence Table (Empty on start)
@@ -57,6 +60,12 @@ local function get_current_level_key()
     return Managers.state.game_mode:level_key()
 end
 
+-- Function that return the current game mode key
+-- Used mostly to check if the current gm is weaves
+local function get_current_game_mode_key()
+    return Managers.state.game_mode._game_mode_key
+end
+
 -- Function that get the level name from the level key
 local function get_level_name(level_key)
     return Localize(LevelSettings[level_key].display_name)
@@ -74,7 +83,18 @@ end
 
 -- Function that get the player career name
 local function get_player_career_name()
-    return get_local_player_sp_profile().careers[get_local_player():career_index()].display_name
+    if get_local_player() == nil then
+        return nil
+    else
+        local index = get_local_player():career_index()
+        if index == nil then
+            -- Career index not ready, return nil and skip update
+            return index
+        else
+            -- Use the index
+            return get_local_player_sp_profile().careers[index].display_name
+        end
+    end
 end
 
 -- Function that get and translate the career name
@@ -89,7 +109,15 @@ end
 
 -- Function that get and return the power level for the current career
 local function get_player_career_power_string()
-    return tostring(UIUtils.presentable_hero_power_level(BackendUtils.get_total_power_level(get_local_player_sp_profile().display_name, get_player_career_name())))
+    local career_name = get_player_career_name()
+    -- Check that the career is not nil
+    if career_name == nil then
+        -- Career nil, return 0
+        return 0
+    else
+        -- Return actual power
+        return tostring(UIUtils.presentable_hero_power_level(BackendUtils.get_total_power_level(get_local_player_sp_profile().display_name, career_name)))
+    end
 end
 
 -- Function that get the number of current human players
@@ -125,6 +153,26 @@ end
 -- Function that return if the user is in the modded realm or not
 local function is_in_modded_realm()
     return script_data["eac-untrusted"]
+end
+
+-- Function that return the current weave wind key
+local function get_current_weave_wind_key()
+    return Managers.weave:get_active_wind()
+end
+
+-- Function that return the wind name translated
+local function get_current_weave_wind_translated()
+    return Localize(Managers.weave:get_active_wind_settings().display_name)
+end
+
+-- Function that return the weave name translated
+local function get_translated_weave_name()
+    return Localize(Managers.weave:get_active_weave_template().display_name)
+end
+
+-- Function that return the weave number
+local function get_weave_number()
+    return tostring(Managers.weave:get_active_weave_template().tier)
 end
 
 -- Function that return if the current host is looking for players or not
@@ -206,11 +254,26 @@ end
 
 -- Update the rich presence details
 local function update_rich_list()
+    -- If the career is null, skip the discord update
+    if(get_player_career_name() == nil) then
+        return
+    end
+
+    -- Check if the player is playing winds of magic
+    local in_weave = (get_current_game_mode_key() == "weave")
+
     local current_state = ""
     local large_image_text = ""
-    local current_lv_key = get_current_level_key()
-    local current_lv_name = get_level_name(current_lv_key)
     local career_name_translated = get_player_career_name_translated()
+    -- Set the level image key, winds of magic use wind icon
+    local current_lv_key = nil
+    local current_lv_name = nil
+    if in_weave then
+        current_lv_key = get_current_weave_wind_key()
+    else
+        current_lv_key = get_current_level_key()
+        current_lv_name = get_level_name(current_lv_key)
+    end
     -- If in modded realm, append a string that indicate it
     if is_in_modded_realm() then
         current_state = "(" .. mod:localize("discord_presence_modded_realm") .. ") "
@@ -220,8 +283,13 @@ local function update_rich_list()
         current_state = current_state .. mod:localize("discord_presence_in_inn")
         large_image_text = current_lv_name
     else
-        current_state = current_state .. "[" .. get_difficulty_name() .. "] " .. current_lv_name
-        large_image_text = get_difficulty_name() .. " - " .. current_lv_name
+        if in_weave then
+            current_state = current_state .. "[WoM-" .. get_weave_number() .. "]" .. get_translated_weave_name()
+            large_image_text = get_weave_number() .. " - " .. get_translated_weave_name() .. " (" .. get_current_weave_wind_translated() .. ")"
+        else
+            current_state = current_state .. "[" .. get_difficulty_name() .. "] " .. current_lv_name
+            large_image_text = get_difficulty_name() .. " - " .. current_lv_name
+        end
     end
     -- Update the Discord Presence Details
     discord_presence = {
@@ -237,9 +305,16 @@ local function update_rich_list()
         partyId = get_unique_party_id(),
         partySize = last_number_of_players,
         partyMax = 4,
-        startTimestamp = discord_persistent_variables.last_timestamp_saved,
         joinSecret = get_lobby_steam_id()
     }
+    -- Add time
+    if in_weave then
+        discord_presence.startTimestamp = discord_persistent_variables.weave_start_timestamp
+        discord_presence.endTimestamp = discord_persistent_variables.weave_end_timestamp
+    else
+        discord_presence.startTimestamp = discord_persistent_variables.last_timestamp_saved
+    end
+    -- Add or remove the join button
     if (not is_joining_from_discord_active) or is_player_playing_special_level() then
         discord_presence.joinSecret = nil -- Remove "Ask to join" button
     end
@@ -348,8 +423,21 @@ mod:hook_safe(CharacterSelectionStateCharacter, "_respawn_player", function ()
     update_rich()
 end)
 
+-- Character changed, need to update the Discord rich
+-- (Mostly because at startup the career may be null)
+mod:hook_safe(PlayerManager, "rpc_to_client_spawn_player", function ()
+    -- Update hero power
+    update_saved_power()
+    -- Update discord rich
+    update_rich_list()
+    update_rich()
+end)
+
 -- Called when loading a map, show on Discord the map you are loading
 mod:hook_safe(StateLoadingRunning, "on_enter", function (self, params)
+    -- Reset possible saved time
+    discord_persistent_variables.weave_total_time = 0
+    -- Load level info
     last_loading_level_key = params.level_transition_handler:get_next_level_key()
     update_rich_with_loading_level()
 end)
@@ -359,6 +447,40 @@ mod:hook_safe(StateLoadingRunning, "update", function (self)
     if last_loading_level_key ~= self.parent:get_next_level_key() then
         last_loading_level_key = self.parent:get_next_level_key()
         update_rich_with_loading_level()
+    end
+end)
+
+-- Hook safe to update data on player spawn in Weave
+mod:hook_safe(GameModeWeave, "event_local_player_spawned", function ()
+    if discord_persistent_variables.weave_total_time == 0 then
+        mod:info("Client updating weave_total_time")
+        discord_persistent_variables.weave_total_time = Managers.weave._remaining_time
+    end
+    mod:info("Setting start and end weave time")
+    discord_persistent_variables.weave_start_timestamp = os.time()
+    discord_persistent_variables.weave_end_timestamp = discord_persistent_variables.weave_start_timestamp + discord_persistent_variables.weave_total_time
+    update_rich_list()
+    update_rich()
+end)
+
+-- Hook safe that save the time of the Winds of Magic match
+mod:hook_safe(WeaveManager, "_set_time_left", function (self, remaining_time)
+    mod:info("Setting remaining time in WeaveManager._set_time_left")
+    discord_persistent_variables.weave_total_time = remaining_time
+end)
+
+-- Hook safe that check if a weave objective completed add time
+mod:hook_safe(WeaveManager, "_objective_completed", function ()
+    mod:info("_objective_completed - check for bonus time to add")
+    local objective_template = Managers.weave:get_active_objective_template()
+    if objective_template ~= nil then
+        local bonus_time = objective_template.bonus_time_on_complete
+        if bonus_time ~= nil and bonus_time > 0 then
+            mod:info("_objective_completed - adding bonus timer")
+            discord_persistent_variables.weave_end_timestamp = discord_persistent_variables.weave_end_timestamp + bonus_time
+            update_rich_list()
+            update_rich()
+        end
     end
 end)
 
