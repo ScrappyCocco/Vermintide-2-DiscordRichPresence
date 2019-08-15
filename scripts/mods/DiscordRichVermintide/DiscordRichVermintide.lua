@@ -24,7 +24,8 @@ local discord_persistent_variables = mod:persistent_table("discord_persistent_va
     game_started = false, -- Used to check if it's the game first start, if yes i need to check if the player want to join because Discord launched the game
     saved_host_id = "", -- Used to save who is the current host i joined, used for creating the PartyID
     saved_power = 0, -- Used to save the hero power, to update it only when is necessary
-    is_benchmark_mode = false, -- Used to save if the current level is the benchmark mode,
+    is_benchmark_mode = false, -- Used to save if the current level is the benchmark mode
+    weave_total_time = 0, -- Used to save the time of the wave, to add at the player spawn
     weave_start_timestamp = 0, -- Used to save the timestamp of the start of the Winds of Magic match
     weave_end_timestamp = 0 -- Used to save the ending timestamp of the Winds of Magic match (so it will appear as "<time> left" on discord)
 })
@@ -434,6 +435,9 @@ end)
 
 -- Called when loading a map, show on Discord the map you are loading
 mod:hook_safe(StateLoadingRunning, "on_enter", function (self, params)
+    -- Reset possible saved time
+    discord_persistent_variables.weave_total_time = 0
+    -- Load level info
     last_loading_level_key = params.level_transition_handler:get_next_level_key()
     update_rich_with_loading_level()
 end)
@@ -448,16 +452,38 @@ end)
 
 -- Hook safe to update data on player spawn in Weave
 mod:hook_safe(GameModeWeave, "event_local_player_spawned", function ()
+    mod:echo("Spawn detected")
+    if discord_persistent_variables.weave_total_time == 0 then
+        mod:echo("Time detected 0")
+        mod:echo("Updating time reading " .. Managers.weave._remaining_time)
+        discord_persistent_variables.weave_total_time = Managers.weave._remaining_time
+    end
+    mod:info("Setting start and end weave time")
+    discord_persistent_variables.weave_start_timestamp = os.time()
+    discord_persistent_variables.weave_end_timestamp = discord_persistent_variables.weave_start_timestamp + discord_persistent_variables.weave_total_time
     update_rich_list()
     update_rich()
 end)
 
 -- Hook safe that save the time of the Winds of Magic match
 mod:hook_safe(WeaveManager, "_set_time_left", function (self, remaining_time)
-    discord_persistent_variables.weave_start_timestamp = os.time()
-    discord_persistent_variables.weave_end_timestamp = discord_persistent_variables.weave_start_timestamp + remaining_time
-    update_rich_list()
-    update_rich()
+    mod:info("Setting remaining time in WeaveManager._set_time_left")
+    discord_persistent_variables.weave_total_time = remaining_time
+end)
+
+-- Hook safe that check if a weave objective completed add time
+mod:hook_safe(WeaveManager, "_objective_completed", function ()
+    mod:info("_objective_completed - check for bonus time to add")
+    local objective_template = Managers.weave:get_active_objective_template()
+    if objective_template ~= nil then
+        local bonus_time = objective_template.bonus_time_on_complete
+        if bonus_time ~= nil and bonus_time > 0 then
+            mod:info("_objective_completed - adding bonus timer")
+            discord_persistent_variables.weave_end_timestamp = discord_persistent_variables.weave_end_timestamp + bonus_time
+            update_rich_list()
+            update_rich()
+        end
+    end
 end)
 
 -- Called when being the Server
